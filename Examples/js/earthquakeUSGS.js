@@ -37,24 +37,14 @@
 
     // Download the data
     myConnector.getData = function(table, doneCallback) {
-
-
         $.ajax({
-            url: "https://us17.api.mailchimp.com/3.0/lists/e2af5723b7/members?count=10&apikey=182c0258895587592b667afc59fe16a6-us17",
-
-            // The name of the callback parameter, as specified by the YQL service
-            jsonp: "callback",
-
-            // Tell jQuery we're expecting JSONP
-            dataType: "jsonp",
-
-            // Tell YQL what we want and that we want JSON
-            data: {
-                format: "json"
-            },
+            type: 'POST',
+            data: "action=mailchimp_get_all",
+            dataType: 'JSON',
+            url: 'https://thekingsmen.ca/wp-admin/admin-ajax.php',
             // Work with the response
             success: function(response) {
-                var members = response.members,
+                var members = response.result.members,
                     tableData = [];
 
                 // Iterate over the JSON object
