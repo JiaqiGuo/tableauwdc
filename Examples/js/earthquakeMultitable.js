@@ -19,14 +19,10 @@
         }, {
             id: "lat",
             alias: "latitude",
-            columnRole: "dimension",
-            // Do not aggregate values as measures in Tableau--makes it easier to add to a map 
             dataType: tableau.dataTypeEnum.float
         }, {
             id: "lon",
             alias: "longitude",
-            columnRole: "dimension",
-            // Do not aggregate values as measures in Tableau--makes it easier to add to a map 
             dataType: tableau.dataTypeEnum.float
         }];
 
@@ -62,7 +58,7 @@
     myConnector.getData = function(table, doneCallback) {
         var dateObj = JSON.parse(tableau.connectionData),
             dateString = "starttime=" + dateObj.startDate + "&endtime=" + dateObj.endDate,
-            apiCall = "http://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&" + dateString + "&minmagnitude=4.5";
+            apiCall = "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&" + dateString + "&minmagnitude=4.5";
 
         $.getJSON(apiCall, function(resp) {
             var feat = resp.features,

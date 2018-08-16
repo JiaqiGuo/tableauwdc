@@ -5,7 +5,10 @@ import { Provider, connect } from 'react-redux';
 
 import { Grid,
          Col,
-         Label } from 'react-bootstrap';
+         PageHeader,
+         Label,
+         Tabs,
+         Tab } from 'react-bootstrap';
 
 // Actions
 import * as simulatorActions from '../actions/simulator_actions';
@@ -15,12 +18,13 @@ import * as messagingActions from '../actions/messaging_actions';
 import store from '../store/store';
 
 // Components
-import Navbar from './Navbar';
+import SimulatorNavbar from './SimulatorNavbar';
 import AddressBar from './AddressBar';
 import StartConnectorGroup from './StartConnectorGroup';
 import SimulatorAttributes from './SimulatorAttributes';
 import DataTables from './DataTables';
 import GatherDataFrame from './GatherDataFrame';
+import StandardConnections from './StandardConnections';
 
 // Utilities
 import * as consts from '../utils/consts';
@@ -52,8 +56,8 @@ class App extends Component {
     // to minimize unnecessary rerenders)
 
     //Bind WDC Actions
-    this.setWdcUrl = (url) =>
-      dispatch(simulatorActions.setWdcUrl(url));
+    this.setAddressBarUrl = (url) =>
+      dispatch(simulatorActions.setAddressBarUrl(url));
     this.setWdcShouldFetchAllTables = (should) =>
       dispatch(simulatorActions.setWdcShouldFetchAllTables(should));
     this.setWdcAttrs = (attrs) =>
@@ -69,6 +73,9 @@ class App extends Component {
     this.sendGetData = (tablesAndIncValues, isFreshFetch) =>
       dispatch(messagingActions.sendGetData(tablesAndIncValues, isFreshFetch));
 
+    // Show Advanced Actions
+    this.setShowAdvanced = (show) =>
+      dispatch(simulatorActions.setShowAdvanced(show));
     // Bind Window Actions
     this.setWindowAsGatherFrame = (frame) =>
       dispatch(simulatorActions.setWindowAsGatherFrame(frame));
@@ -76,37 +83,57 @@ class App extends Component {
     // Bind Reset Action
     this.resetSimulator = () =>
       dispatch(simulatorActions.resetState());
+
+    // Bind Join Filter Actions
+    this.setFilterInfo = (filterInfo) =>
+      dispatch(simulatorActions.setFilterInfo(filterInfo));
+    this.setActiveJoinFilter = (activeFilter) =>
+      dispatch(simulatorActions.setActiveJoinFilter(activeFilter));
   }
 
   render() {
+    let standardConnectionsTabList = null;
+
     // compute variables needed for render
-    const interactivePhaseInProgress = this.props.phaseInProgress &&
-                                       this.props.currentPhase === consts.phases.INTERACTIVE;
+    const interactiveOrAuthPhaseInProgress = this.props.phaseInProgress &&
+      (this.props.currentPhase === consts.phases.INTERACTIVE ||
+       this.props.currentPhase === consts.phases.AUTH);
     const dataGatheringPhaseInProgress = this.props.phaseInProgress &&
                                          this.props.currentPhase === consts.phases.GATHER_DATA;
 
-    const inDataGatherPhase = this.props.currentPhase === consts.phases.GATHER_DATA;
-
     const hasData = !!this.props.tables && Object.keys(this.props.tables).length > 0;
-    const isWdcUrlEmpty = (this.props.wdcUrl === '');
+    const isAddressBarEmpty = (this.props.addressBarUrll === '');
+
+    const hasStandardConnections = this.props.standardConnections.length > 0;
+    if (hasStandardConnections) {
+      const connectionList = this.props.standardConnections;
+      standardConnectionsTabList = connectionList.map((standardConnection, idx) =>
+        <Tab eventKey={idx} title={standardConnection.alias} key={`connection-tab-${idx}`}>
+          <StandardConnections data={standardConnection} key={`connection-window-${idx}`} />
+        </Tab>
+      );
+    }
 
     return (
       <div className="simulator-app">
+        <SimulatorNavbar
+          showAdvanced={this.props.showAdvanced}
+          setShowAdvanced={this.setShowAdvanced}
+        />
         <Grid fluid>
-          <Navbar />
           <Col md={12} className="address-bar">
             <AddressBar
-              disabled={inDataGatherPhase}
-              wdcUrl={this.props.wdcUrl}
-              setWdcUrl={this.setWdcUrl}
-              resetSimulator={this.resetSimulator}
+              addressBarUrl={this.props.addressBarUrl}
+              mostRecentUrls={this.props.mostRecentUrls}
+              setAddressBarUrl={this.setAddressBarUrl}
             />
           </Col>
           <Col md={6} className="run-connector">
             <StartConnectorGroup
               isInProgress={this.props.phaseInProgress}
-              interactivePhaseInProgress={interactivePhaseInProgress}
-              isWdcUrlEmpty={isWdcUrlEmpty}
+              showAdvanced={this.props.showAdvanced}
+              interactiveOrAuthPhaseInProgress={interactiveOrAuthPhaseInProgress}
+              isAddressBarEmpty={isAddressBarEmpty}
               startInteractivePhase={this.startInteractivePhase}
               startAuthPhase={this.startAuthPhase}
               cancelCurrentPhase={this.cancelCurrentPhase}
@@ -117,16 +144,29 @@ class App extends Component {
           <Col md={6} className="interactive-phase">
             <SimulatorAttributes
               disabled={this.props.phaseInProgress}
+              showAdvanced={this.props.showAdvanced}
               wdcAttrs={this.props.wdcAttrs}
               setWdcAttrs={this.setWdcAttrs}
             />
           </Col>
-          <Col md={12} className="hr-col" >
-            <hr />
-          </Col>
-
-          <Col md={12} className="table-header" >
-            <h2> Tables </h2>
+          {this.props.showAdvanced ?
+            <Col md={12} id="standard-connections-results">
+              <Col className="standard-header">
+                <PageHeader> Standard Connections </PageHeader>
+              </Col>
+              {hasStandardConnections ?
+                <Tabs md={12} defaultActiveKey={0} id="connection-window" animation={false}>
+                  {standardConnectionsTabList}
+                </Tabs>
+                :
+                <Col className="no-results-label">
+                  <Label> No Standard Connections Gathered </Label>
+                </Col>
+                }
+            </Col>
+          : null}
+          <Col md={12} className="table-header">
+            <PageHeader> Tables </PageHeader>
           </Col>
           {hasData ?
             <Col md={12} className="results-tables">
@@ -134,10 +174,19 @@ class App extends Component {
                 tables={this.props.tables}
                 getTableDataCallback={this.sendGetData}
                 fetchInProgress={dataGatheringPhaseInProgress}
+                showAdvanced={this.props.showAdvanced}
+                filterInfo={this.props.filterInfo}
+                activeJoinFilter={this.props.activeJoinFilter}
+                setActiveJoinFilter={this.setActiveJoinFilter}
+                setFilterInfo={this.setFilterInfo}
               />
             </Col>
             :
-            <Col md={12} className="no-results-label" >
+            <Col
+              md={12}
+              className="no-results-label"
+              style={{ paddingBottom: 10 }}
+            >
               <Label> No Data Gathered </Label>
             </Col>
           }

@@ -3,6 +3,7 @@ var until = webdriver.until;
 var should = require('should');
 var express = require("express");
 var path = require("path");
+var config = require('./config.js');
 
 var app = express();
 
@@ -17,7 +18,7 @@ describe('General Simulator Tests', function(){
   before(function(done) {
     //Spin up file server
     app.use(express.static(path.join(__dirname, "../../../")));
-    server = app.listen(8888);
+    server = app.listen(config.port);
 
     // create driver
     if (process.env.SAUCE_USERNAME != undefined) {
@@ -38,7 +39,7 @@ describe('General Simulator Tests', function(){
     }
 
     // open simulator page
-    driver.get('http://localhost:8888/Simulator').then(function() {
+    driver.get('http://localhost:' + config.port + '/Simulator?src=srcQuery').then(function() {
       simulatorWindow = driver.getWindowHandle();
       done();
     });
@@ -66,6 +67,18 @@ describe('General Simulator Tests', function(){
     driver.isElementPresent({className:'interactive-phase'})
       .then(function (present) {
         present.should.be.true();
+        done();
+      });
+  })
+
+  it("Should Have Set Src Query Url", function(done){
+    const wdcUrl = 'srcQuery';
+    driver.findElement({id:'address-input'})
+      .then(function (addressBar) {
+        return addressBar.getAttribute("value");
+      })
+      .then(function(url) {
+        url.should.be.equal(wdcUrl);
         done();
       });
   })
@@ -117,6 +130,20 @@ describe('General Simulator Tests', function(){
         done();
       });
   });
+
+  it("Should Be Able to Open Advanced Settings", function(done) {
+    driver.findElement({className:'advanced-btn'})
+      .then(function(btn) {
+        return btn.click();
+      })
+      .then(function() {
+        return driver.wait(until.elementsLocated({ className: 'advanced' }), timeout);
+      })
+      .then(function (elements) {
+        elements.length.should.be.above(0);
+        done();
+      });
+  })
 
   it("Should be Able to Enter Interactive Mode", function(done){
     driver.findElement({ id: 'interactive-btn' })
@@ -182,25 +209,6 @@ describe('General Simulator Tests', function(){
       })
       .then(function (elements) {
         elements.length.should.be.above(0);
-        done();
-      });
-  });
-
-  it("Should Reset", function(done){
-    const correctName = '';
-    driver.findElement({ id: 'reset-btn' })
-      .then(function (btn) {
-        return btn.click();
-      })
-      .then(function () {
-        driver.sleep(500);
-        return driver.findElement({id:'connectionName'})
-      })
-      .then(function(field) {
-        return field.getAttribute("value");
-      })
-      .then(function(connectionName) {
-        connectionName.should.be.equal(correctName);
         done();
       });
   });

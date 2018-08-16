@@ -3,10 +3,12 @@ var until = webdriver.until;
 var should = require('should');
 var express = require("express");
 var path = require("path");
+var config = require('./config.js');
 
 var app = express();
 
-describe('Stock Quotes Connector', function(){
+// This test is currently skipped due to flakiness
+describe.skip('Standard Connections Example Connector', function(){
   var driver;
   var server;
   let timeout = 60000;
@@ -14,11 +16,11 @@ describe('Stock Quotes Connector', function(){
 
   // run setup once before tests
   before(function(done) {
-    //Spin up file server
+    // Spin up file server
     app.use(express.static(path.join(__dirname, "../../../")));
-    server = app.listen(8888);
+    server = app.listen(config.port);
 
-    //create driver
+    // create driver
     if (process.env.SAUCE_USERNAME != undefined) {
       driver = new webdriver.Builder()
         .usingServer('http://'+ process.env.SAUCE_USERNAME+':'+process.env.SAUCE_ACCESS_KEY+'@ondemand.saucelabs.com:80/wd/hub')
@@ -37,7 +39,7 @@ describe('Stock Quotes Connector', function(){
     }
 
     // open simulator page
-    driver.get('http://localhost:8888/Simulator').then(function() {
+    driver.get('http://localhost:' + config.port + '/Simulator').then(function() {
       done();
     });
   });
@@ -50,7 +52,7 @@ describe('Stock Quotes Connector', function(){
 
   it("Should be Able to Enter a Url", function(done){
     let addressBar;
-    const wdcUrl = '../Examples/html/StockQuoteConnector_promises.html';
+    const wdcUrl = '../Examples/html/StandardConnectionsExample.html';
     driver.findElement({id:'address-input'})
       .then(function (element) {
         addressBar = element;
@@ -79,13 +81,7 @@ describe('Stock Quotes Connector', function(){
         return driver.switchTo().window('wdc');
       })
       .then(function() {
-        return driver.wait(until.elementLocated({ className: 'form-control' }), timeout);
-      })
-      .then(function(input) {
-        return input.sendKeys("DATA");
-      })
-      .then(function() {
-        return driver.findElement({ id: 'submitButton' });
+        return driver.wait(until.elementLocated({ id: 'submitButton' }), timeout);
       })
       .then(function(btn) {
         return btn.click();
@@ -96,16 +92,18 @@ describe('Stock Quotes Connector', function(){
       });
   });
 
-  it("Should Have Set WDC Attrs", function(done){
-    const correctData = 'DATA';
-    driver.sleep(750);
-    driver.findElement({id:'connectionData'})
-      .then(function(field) {
-        return field.getAttribute("value");
+  it("Should Have Standard Connections", function(done){
+    driver.findElement({ className: 'advanced-btn' })
+      .then(function(btn) {
+        return btn.click();
       })
-      .then(function(connectionData) {
-        connectionData.should.be.equal(correctData);
-        done();
+      .then(function() {
+        driver.sleep(100);
+        driver.isElementPresent({className: 'tab-content'})
+          .then(function (present) {
+            present.should.be.true();
+            done();
+          });
       });
   });
 
@@ -113,7 +111,7 @@ describe('Stock Quotes Connector', function(){
     driver.isElementPresent({className: 'table-preview-Column'})
       .then(function (present) {
         present.should.be.true();
-        done()
+        done();
       });
   });
 

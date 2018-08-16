@@ -1,5 +1,6 @@
 import Cookie from 'js-cookie';
 import { createAction } from 'redux-actions';
+import { cleanUrl } from '../utils/misc';
 import * as consts from '../utils/consts';
 
 // Redux action creator functions
@@ -10,7 +11,11 @@ import * as consts from '../utils/consts';
 // Wdc Actions
 export const setWdcShouldFetchAllTables = createAction('SET_WDC_SHOULD_FETCH_ALL_TABLES');
 export const setWdcAttrs = createAction('SET_WDC_ATTRS');
+export const setFilterInfo = createAction('SET_FILTER_INFO');
+export const setActiveJoinFilter = createAction('SET_ACTIVE_JOIN_FILTER');
+export const setAddressBarUrl = createAction('SET_ADDRESS_BAR_URL');
 export const setWdcUrl = createAction('SET_WDC_URL');
+export const setMostRecentUrls = createAction('SET_MOST_RECENT_URLS');
 
 // Phase Actions
 export const setCurrentPhase = createAction('SET_CURRENT_PHASE');
@@ -22,20 +27,32 @@ export const setPhaseSubmitCalled = createAction('SET_PHASE_SUBMIT_CALLED');
 export const setSimulatorWindow = createAction('SET_SIMULATOR_WINDOW');
 export const setShouldHaveGatherDataFrame = createAction('SET_SHOULD_HAVE_GATHER_DATA_FRAME');
 
-// Table actions
+// Table Actions
 export const setTables = createAction('SET_TABLES');
 export const addTables = createAction('ADD_TABLES');
 
+// Standard Connection Actions
+export const setStandardConnections = createAction('SET_STANDARD_CONNECTIONS');
+
+// Advanced UI Actions
+export const setShowAdvanced = createAction('SET_SHOW_ADVANCED', (show) => {
+  Cookie.set('showAdvanced', show);
+  return show;
+});
+
 // Reset Actions
 export const resetState = createAction('RESET_STATE', () => {
-  const wdcUrl = Cookie.get('lastUrl') || '../Examples/html/earthquakeUSGS.html';
-  return { ...consts.defaultState, wdcUrl };
+  const mostRecentUrls = Cookie.getJSON('mostRecentUrls') || consts.samples;
+  // copy mostRecentUrls to sever references
+  const addressBarUrl = [...mostRecentUrls][0];
+  return { ...consts.defaultState, addressBarUrl, mostRecentUrls };
 });
 
 export const resetPhaseState = createAction('RESET_PHASE_STATE');
 export const resetWdcAttrs = createAction('RESET_WDC_ATTRS');
 export const resetTables = createAction('RESET_TABLES');
 export const resetTableData = createAction('RESET_TABLE_DATA');
+export const resetStandardConnections = createAction('RESET_STANDARD_CONNECTIONS');
 
 
 // Thunks (and Composed Actions)
@@ -44,15 +61,13 @@ export const resetTableData = createAction('RESET_TABLE_DATA');
 
 // Phase Control Thunks
 export function startConnector(phase) {
-  return (dispatch, getState) => {
-    // Commit url changes once we are sure the user is done
-    const { wdcUrl } = getState();
-    Cookie.set('lastUrl', wdcUrl);
-
+  return (dispatch) => {
     // Clean up simulator and get ready for starting connector
     dispatch(resetTables());
+    dispatch(resetStandardConnections());
     dispatch(setCurrentPhase(phase));
     dispatch(setPhaseInProgress(true));
+    dispatch(commitUrl());
     dispatch(closeSimulatorWindow());
     dispatch(setWindowAsExternal());
   };
@@ -105,5 +120,31 @@ export function closeSimulatorWindow() {
 
     dispatch(setShouldHaveGatherDataFrame(false));
     dispatch(setSimulatorWindow(null));
+  };
+}
+
+
+//Address Bar Thunks
+export function commitUrl() {
+  return (dispatch, getState) => {
+    // Commit url changes once we are sure the user is done
+    let updatedUrls;
+    const { addressBarUrl, mostRecentUrls } = getState();
+    const urlIndex = mostRecentUrls.indexOf(addressBarUrl);
+    const cleanedUrl = cleanUrl(addressBarUrl);
+
+    if (urlIndex === -1) {
+      updatedUrls = [cleanedUrl, ...mostRecentUrls].slice(0, -1);
+    } else {
+      // copy mostRecentUrls to sever references
+      updatedUrls = [...mostRecentUrls];
+      updatedUrls.splice(urlIndex, 1);
+      updatedUrls = [cleanedUrl, ...updatedUrls];
+    }
+
+    Cookie.set('mostRecentUrls', updatedUrls);
+    dispatch(setWdcUrl(cleanedUrl));
+    dispatch(setAddressBarUrl(cleanedUrl));
+    dispatch(setMostRecentUrls(updatedUrls));
   };
 }

@@ -27,6 +27,7 @@ describe('Messaging Thunks', function() {
   // mock toastr object which is normally in the documents global scope
   global.toastr = sinon.spy();
   toastr.error = sinon.spy();
+  toastr.info = sinon.spy();
   describe('Receive Message', function() {
     it('Should merge WDC Attrs', function () {
       const data = {
@@ -36,8 +37,15 @@ describe('Messaging Thunks', function() {
           connectionName: "name",
           connectionData: "data",
           username: "username",
+          usernameAlias: "usernameAlias",
           password: "password",
-          locale: "en-us"
+          platformOs: "platformOs",
+          platformVersion: "platformVersion",
+          platformEdition: "platformEdition",
+          platformBuildNumber: "platformBuildNumber",
+          authPurpose: "ephemeral",
+          locale: "en-us",
+          usernameAlias: ""
         },
         version: "2.0.1"
       };
@@ -96,6 +104,17 @@ describe('Messaging Thunks', function() {
       store.dispatch(messagingActions.handleSubmit());
       store.getActions().should.deepEqual(expectedActions);
     });
+
+    it('Should Do Nothing in Data Gather Phase', function () {
+      const expectedActions = [];
+      const store = mockStore({
+        ...consts.defaultState,
+        currentPhase: consts.phases.GATHER_DATA
+      })
+
+      store.dispatch(messagingActions.handleSubmit());
+      store.getActions().should.deepEqual(expectedActions);
+    });
   });
 
   describe('handleSchemaCallback Thunk', function() {
@@ -115,15 +134,25 @@ describe('Messaging Thunks', function() {
         }
       };
 
+      const standardConnection = {
+        alias: "alias",
+        tables: [{id: "id1", alias: "alias1"},
+                {id: "id2", alias: "alias2"}],
+        joins:  [{left: {tableAlias: "alias1", columnId: "c1"},
+                 right: {tableAlias: "alias2", columnId: "c2"},
+                 joinType: "inner"}]
+      }
+
       const expectedActions = [
         { type: "ADD_TABLES", payload: table },
         { type: "SET_PHASE_IN_PROGRESS", payload: false },
+        { type: "SET_STANDARD_CONNECTIONS", payload: [standardConnection] }
       ];
 
       const store = mockStore(consts.defaultState);
 
       //schema callback expects an array of schemas
-      store.dispatch(messagingActions.handleSchemaCallback([schema]));
+      store.dispatch(messagingActions.handleSchemaCallback([schema], [standardConnection]));
       store.getActions().should.deepEqual(expectedActions);
     });
   });
@@ -175,15 +204,49 @@ describe('Messaging Thunks', function() {
   });
 
   describe('handleAbortForAuth Thunk', function() {
-    it('Should Create the Right Actions', function () {
+    it('Should Create the Right Actions in Gather Data Phase', function (done) {
+      const input = consts.phases.AUTH;
+      const commitUrlActions= [
+        { type: "SET_WDC_URL", payload: consts.defaultUrl },
+        { type: "SET_ADDRESS_BAR_URL", payload: consts.defaultUrl },
+        { type: "SET_MOST_RECENT_URLS", payload: consts.samples},
+      ];
+
       const closeSimulatorActions = [
         { type: "SET_SHOULD_HAVE_GATHER_DATA_FRAME", payload: false },
         { type: "SET_SIMULATOR_WINDOW" },
       ];
+
+      const setWindowAsExternalActions = [{ type: "SET_SIMULATOR_WINDOW" }];
+
+      const startConnectorActions = [
+        { type: "RESET_TABLES" },
+        { type: "RESET_STANDARD_CONNECTIONS"},
+        { type: "SET_CURRENT_PHASE", payload: input },
+        { type: "SET_PHASE_IN_PROGRESS", payload: true },
+        ...commitUrlActions,
+        ...closeSimulatorActions,
+        ...setWindowAsExternalActions,
+      ]
+
       const expectedActions = [
         { type: "SET_PHASE_IN_PROGRESS", payload: false },
-        ...closeSimulatorActions,
+        ...startConnectorActions
       ];
+
+      const state = {...consts.defaultState, currentPhase: consts.phases.GATHER_DATA};
+      const store = mockStore(state);
+
+      store.dispatch(messagingActions.handleAbortForAuth());
+      // it takes time for toastr, to disappear
+      setTimeout(()=>{
+        store.getActions().should.deepEqual(expectedActions);
+        done();
+      }, 800);
+    });
+
+    it('Should Create the No Actions in Other Phases', function () {
+      const expectedActions = [];
 
       const store = mockStore(consts.defaultState);
 

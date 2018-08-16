@@ -1,5 +1,5 @@
 import React, { Component, PropTypes } from 'react';
-import { Button, Checkbox } from 'react-bootstrap';
+import { Button, Checkbox, PageHeader } from 'react-bootstrap';
 
 //----------------------Start Connector Group---------------------//
 // Component which Buttons to Start Both the Interactive
@@ -20,31 +20,32 @@ class StartConnectorGroup extends Component {
     return (
       <div>
         <div>
-          <h2
-            style={{ verticalAlign: 'middle', display: 'inline-block' }}
-          >
+          <PageHeader>
             Run Connector
-          </h2>
+          </PageHeader>
         </div>
         <div>
           <Button
             id="interactive-btn"
             onClick={this.props.startInteractivePhase}
             bsStyle="success"
-            disabled={this.props.isInProgress || this.props.isWDCUrlEmpty}
+            disabled={this.props.isInProgress || this.props.isAddressBarEmpty}
           >
             Start Interactive Phase
           </Button>
-          <Button
-            id="auth-btn"
-            onClick={this.props.startAuthPhase}
-            bsStyle="success"
-            style={{ marginLeft: '4px' }}
-            disabled={this.props.isInProgress || this.props.isWDCUrlEmpty}
-          >
-            Start Auth Phase
-          </Button>
-          {this.props.interactivePhaseInProgress ?
+          {this.props.showAdvanced ?
+            <Button
+              id="auth-btn"
+              onClick={this.props.startAuthPhase}
+              bsStyle="success"
+              style={{ marginLeft: '4px' }}
+              disabled={this.props.isInProgress || this.props.isAddressBarEmpty}
+            >
+              Start Auth Phase
+            </Button>
+            : null
+          }
+          {this.props.interactiveOrAuthPhaseInProgress ?
             <Button
               onClick={this.props.cancelCurrentPhase}
               style={{ marginLeft: '4px' }}
@@ -67,8 +68,9 @@ class StartConnectorGroup extends Component {
 
 StartConnectorGroup.proptypes = {
   isInProgress: PropTypes.bool.isRequired,
-  interactivePhaseInProgress: PropTypes.bool.isRequired,
-  isWDCUrlEmpty: PropTypes.bool.isRequired,
+  showAdvanced: PropTypes.bool.isRequired,
+  interactiveOrAuthPhaseInProgress: PropTypes.bool.isRequired,
+  isAddressBarEmpty: PropTypes.bool.isRequired,
   wdcShouldFetchAll: PropTypes.bool.isRequired,
   startAuthPhase: PropTypes.func.isRequired,
   startInteractivePhase: PropTypes.func.isRequired,

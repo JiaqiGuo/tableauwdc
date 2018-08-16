@@ -5,17 +5,22 @@ import * as simulatorActions from './simulator_actions';
 // Receiving Message Thunks
 export function receiveMessage(payload) {
   // Routes received messages to other thunks as necessary
-  return (dispatch) => {
+  return (dispatch, getState) => {
     try {
       const { msgData, msgName, props: attrs, version } = JSON.parse(payload.data);
 
-      if(version=== "1.1.0" || version === "1.1.1") {
-        var errmsg = 'this simulator only supports wdcs that are using version 2.0 of the api or later, your wdc\'s version is: ' + wdcapiversion;
-        toastr.error(errmsg, 'unsupported wdc version error:')
+      if (version === '1.1.0' || version === '1.1.1') {
+        const errmsg = 'this simulator only supports wdcs that are ' +
+                       'using version 2.0 of the api or later, your ' +
+                       `wdc\'s version is: ${version}`;
+        toastr.error(errmsg, 'unsupported wdc version error:');
       }
 
+      const { wdcAttrs } = getState();
       if (attrs) {
-        dispatch(simulatorActions.setWdcAttrs(attrs));
+        // Merge new attributes into old to deal with various versions of the shim and simulator
+        // exposing different attributes
+        dispatch(simulatorActions.setWdcAttrs({ ...wdcAttrs, ...attrs }));
       }
 
       switch (msgName) {
@@ -42,7 +47,8 @@ export function receiveMessage(payload) {
 
         case eventNames.SCHEMA_CB: {
           const schema = msgData.schema;
-          dispatch(handleSchemaCallback(schema));
+          const standardConnections = msgData.standardConnections;
+          dispatch(handleSchemaCallback(schema, standardConnections));
           break;
         }
 
@@ -74,6 +80,13 @@ export function receiveMessage(payload) {
           dispatch(handleAbortForAuth(errorMsg));
           break;
         }
+
+        case eventNames.REPORT_PROGRESS: {
+          const progressMsg = msgData.progressMsg;
+          dispatch(handleReportProgress(progressMsg));
+          break;
+        }
+
         default: {
           // The message was not for the simulator, ignore it.
           break;
@@ -113,17 +126,21 @@ export function handleInit() {
 }
 
 export function handleSubmit() {
-  return (dispatch) => {
-    // Clean up simulator and start Data Gather Phase
-    dispatch(simulatorActions.setPhaseSubmitCalled(true));
-    dispatch(simulatorActions.setPhaseInProgress(false));
-    dispatch(simulatorActions.closeSimulatorWindow());
-    dispatch(simulatorActions.resetTables());
-    dispatch(simulatorActions.startGatherDataPhase());
+  return (dispatch, getState) => {
+    const { currentPhase } = getState();
+    // Clean up simulator and start Data Gather Phase unless we are
+    // already in it
+    if (currentPhase !== phases.GATHER_DATA) {
+      dispatch(simulatorActions.setPhaseSubmitCalled(true));
+      dispatch(simulatorActions.setPhaseInProgress(false));
+      dispatch(simulatorActions.closeSimulatorWindow());
+      dispatch(simulatorActions.resetTables());
+      dispatch(simulatorActions.startGatherDataPhase());
+    }
   };
 }
 
-export function handleSchemaCallback(schema) {
+export function handleSchemaCallback(schema, standardConnections) {
   return (dispatch, getState) => {
     // Validate schema, and populate store with new table objects
     // using the schema info
@@ -152,6 +169,7 @@ export function handleSchemaCallback(schema) {
     } else {
       toastr.error('Please see debug console for details.', 'WDC Validation Error');
     }
+    dispatch(simulatorActions.setStandardConnections(standardConnections));
   };
 }
 
@@ -192,15 +210,33 @@ export function handleAbort(errMsg) {
   };
 }
 
-export function handleAbortForAuth(errMsg) {
-  return (dispatch) => {
+export function handleAbortForAuth(msg) {
+  return (dispatch, getState) => {
     // Need auth, close the simulator, tell the user
-    const toastTitle = 'The WDC has been aborted for auth, ' +
-                     'use the "Start Auth Phase" to test ' +
-                     'your WDC Auth Mode:';
-    dispatch(simulatorActions.setPhaseInProgress(false));
-    dispatch(simulatorActions.closeSimulatorWindow());
-    toastr.error(errMsg, toastTitle);
+    const toastTitle = 'The WDC has been aborted for auth ' +
+                       'and will now be launched in Auth Mode:';
+    const { currentPhase } = getState();
+    if (currentPhase === phases.GATHER_DATA) {
+      toastr.info(msg, toastTitle);
+      setTimeout(() => {
+        dispatch(simulatorActions.setPhaseInProgress(false));
+        dispatch(simulatorActions.startConnector(phases.AUTH));
+      }, 750);
+    } else {
+      /* eslint-disable no-console */
+      console.log(`abortForAuth isn't supported in the ${currentPhase} phase`);
+      /* eslint-enable no-console */
+    }
+  };
+}
+
+export function handleReportProgress(progressMsg) {
+  return () => {
+    // The WDC has reported a progress message, display in toast
+    /* eslint-disable no-console */
+    console.log(progressMsg);
+    /* eslint-enable no-console */
+    toastr.info(progressMsg, 'The WDC reported a progress message:');
   };
 }
 

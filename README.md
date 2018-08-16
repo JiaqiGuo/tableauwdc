@@ -1,8 +1,8 @@
 # Tableau Web Data Connector SDK
-[![Coverage Status](https://coveralls.io/repos/github/jagreene/webdataconnector/badge.svg?branch=tests)](https://coveralls.io/github/jagreene/webdataconnector?branch=tests) [![Build Status](https://travis-ci.org/jagreene/webdataconnector.svg?branch=tests)](https://travis-ci.org/jagreene/webdataconnector)
+[![Tableau Supported](https://img.shields.io/badge/Support%20Level-Tableau%20Supported-53bd92.svg)](https://www.tableau.com/support-levels-it-and-developer-tools) [![Coverage Status](https://coveralls.io/repos/github/tableau/webdataconnector/badge.svg?branch=master)](https://coveralls.io/github/tableau/webdataconnector?branch=master) [![Build Status](https://travis-ci.org/tableau/webdataconnector.svg?branch=master)](https://travis-ci.org/tableau/webdataconnector)
 
-Currently in development is version 2.0 of the web data connector API.
+Use the Tableau Web Data Connector (WDC) to connect to web data sources from Tableau. This is the repository for the Tableau WDC SDK, which includes developer samples and a simulator to help you create your connectors.
 
-All of the information for this content can be found in our beta docs: [http://tableau.github.io/webdataconnector](http://tableau.github.io/webdataconnector/).
+[Visit the project website and documentation here](http://tableau.github.io/webdataconnector/).
 
-Please check out the new API! We would love feedback on it and the docs.
+Want to contribute to the WDC? See our [contribution guidelines](http://tableau.github.io/).

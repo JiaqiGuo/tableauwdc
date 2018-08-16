@@ -8,25 +8,22 @@
             id: "id",
             dataType: tableau.dataTypeEnum.string
         }, {
-            id: "mag",
-            alias: "magnitude",
-            dataType: tableau.dataTypeEnum.float
-        }, {
-            id: "title",
-            alias: "title",
+            id: "email_address",
+            alias: "Email",
             dataType: tableau.dataTypeEnum.string
         }, {
-            id: "lat",
-            alias: "latitude",
-            columnRole: "dimension",
-            // Do not aggregate values as measures in Tableau--makes it easier to add to a map 
-            dataType: tableau.dataTypeEnum.float
+            id: "CITY",
+            alias: "City",
+            dataType: tableau.dataTypeEnum.string
         }, {
-            id: "lon",
-            alias: "longitude",
-            columnRole: "dimension",
-            // Do not aggregate values as measures in Tableau--makes it easier to add to a map 
-            dataType: tableau.dataTypeEnum.float
+            id: "HOWHEAR",
+            dataType: tableau.dataTypeEnum.string
+        }, {
+            id: "timestamp_opt",
+            dataType: tableau.dataTypeEnum.datetime
+        }, {
+            id: "location",
+            dataType: tableau.dataTypeEnum.geometry
         }];
 
         var tableSchema = {
@@ -40,23 +37,41 @@
 
     // Download the data
     myConnector.getData = function(table, doneCallback) {
-        $.getJSON("http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson", function(resp) {
-            var feat = resp.features,
-                tableData = [];
 
-            // Iterate over the JSON object
-            for (var i = 0, len = feat.length; i < len; i++) {
-                tableData.push({
-                    "id": feat[i].id,
-                    "mag": feat[i].properties.mag,
-                    "title": feat[i].properties.title,
-                    "lon": feat[i].geometry.coordinates[0],
-                    "lat": feat[i].geometry.coordinates[1]
-                });
+
+        $.ajax({
+            url: "https://us17.api.mailchimp.com/3.0/lists/e2af5723b7/members?count=10&apikey=182c0258895587592b667afc59fe16a6-us17",
+
+            // The name of the callback parameter, as specified by the YQL service
+            jsonp: "callback",
+
+            // Tell jQuery we're expecting JSONP
+            dataType: "jsonp",
+
+            // Tell YQL what we want and that we want JSON
+            data: {
+                format: "json"
+            },
+            // Work with the response
+            success: function(response) {
+                var members = response.members,
+                    tableData = [];
+
+                // Iterate over the JSON object
+                for (var i = 0, len = members.length; i < len; i++) {
+                    tableData.push({
+                        "id": members[i].id,
+                        "email_address": members[i].email_type,
+                        "CITY": members[i].merge_fields.CITY,
+                        "HOWHEAR": members[i].merge_fields.HOWHEAR,
+                        "timestamp_opt": members[i].timestamp_opt,
+                        "location": members[i].location,
+                    });
+                }
+
+                table.appendRows(tableData);
+                doneCallback();
             }
-
-            table.appendRows(tableData);
-            doneCallback();
         });
     };
 
